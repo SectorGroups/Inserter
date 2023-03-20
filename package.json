@@ -12,6 +12,9 @@
     "aws-sdk": "^2.1331.0",
     "cheerio": "^1.0.0-rc.12",
     "chrome-aws-lambda": "^10.1.0",
-    "htmlparser2": "^8.0.1"
+    "html2canvas": "^1.4.1",
+    "htmlparser2": "^8.0.1",
+    "jspdf": "^2.5.1",
+    "puppeteer": "^19.7.4"
   }
 }

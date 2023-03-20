@@ -1,28 +1,42 @@
-exports.handler = async (event, context) => {
-  console.log(event);
-  console.log(context);
+const main = async (event, context) => {
+  // console.log(event);
+  // console.log(context);
 
   // change to input param
-  const inputData = JSON.parse(event.body);
-  // const inputData = require('./input-data');
+  // const inputData = JSON.parse(event.body);
+  const inputData = require('./input-data');
 
   const fs = require("fs");
-  // const puppeteer = require('puppeteer');
+  const puppeteer = require('puppeteer');
   const chromium = require('chrome-aws-lambda');
 
-  // import * as htmlparser2 from "htmlparser2"; 
   var htmlparser2 = require("htmlparser2");
   const cheerio = require('cheerio');
+  
+  const html2canvas = require('html2canvas');
+  const jsPdf = require('jspdf');
 
   // v2: change to input param
   const url = 'https://share.hsforms.com/1P75vRsyNTdSKleb72s-LYA32b7e';
 
+  const printPDF = () => {
+    alert('print')
+    const domElement = document.getElementById('main')
+    html2canvas(domElement, { onclone: (document) => {
+      document.getElementById('print-button').style.visibility = 'hidden'
+    }})
+    .then((canvas) => {
+        const img = canvas.toDataURL('image/png')
+        const pdf = new jsPdf()
+        pdf.addImage(imgData, 'JPEG', 0, 0, width, height)
+        pdf.save('your-filename.pdf')
+    })
+  }
 
-  const browser = await chromium.puppeteer.launch({ 
-    args: chromium.args,
-    defaultViewport: chromium.defaultViewport,
-    executablePath: await chromium.executablePath,
-    headless: chromium.headless,
+  const browser = await puppeteer.launch({ 
+    args: puppeteer.args,
+    defaultViewport: puppeteer.defaultViewport,
+    headless: true,
     ignoreHTTPSErrors: true
   }); // for test disable the headlels mode,
   const page = await browser.newPage();
@@ -56,6 +70,7 @@ exports.handler = async (event, context) => {
               $(`input[name=${attributes.name}][value=${inputData.properties[attributes.name].value}]`).attr('checked', 'checked');
             }else if (name === "input" && attributes.type === "file") {
               $(`<img style="width: 200px" src="${inputData.properties[attributes.name].value}"/>`).insertAfter(`input[name=${attributes.name}]`);
+              $(`input[name=${attributes.name}]`).remove();
             }else if (name === "input" && attributes.type === "checkbox") {
               var attrName = attributes.id.split('-input')[0];
               $(`input[name*=${attrName}][value=${inputData.properties[attrName].value}]`).attr('checked','checked');
@@ -80,24 +95,68 @@ exports.handler = async (event, context) => {
   });
 
   $('button[type="submit"]').remove();
+  $('<button id="print-button" type="button" onclick="printPDF()">Print Pdf</button>').prependTo('.hs-form__pagination-content-container');
+
+  // $('style').text +=
+  //   "@media screen and (min-width:400px) { div { color: red; }}"
+  $('head').append(`<style type="text/css">
+  @media print {
+    div {
+      break-inside: avoid;
+    }
+  }
+  
+  </style>`);
+
+  $('head').append('<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>');
+  $('head').append('<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/1.3.2/jspdf.debug.js"></script>');
+
+  // // Create the element
+  // var script = document.createElement("script");
+  // // Add script content
+  // script.async = true;
+  // script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js'
+
+  // script.onload = () => {
+  //   alert('Script loaded successfuly');
+  // };
+  // // Append
+  // $("head").prepend(script);
+
+  $(`
+  <script type="text/javascript">
+  function printPDF(){
+    alert('print');
+    const domElement = document.getElementById('main');
+    html2canvas(domElement, { onclone: (document) => {
+      document.getElementById('print-button').style.visibility = 'hidden'
+    }})
+    .then((canvas) => {
+        const img = canvas.toDataURL('image/png')
+        const pdf = new jsPdf()
+        pdf.addImage(imgData, 'JPEG', 0, 0, width, height)
+        pdf.save('your-filename.pdf')
+    });
+  }
+`).prependTo('head');
+
 
   const outputHtml = $.html();
-  fs.writeFileSync("/tmp/output.html", outputHtml);
+  fs.writeFileSync("./output-test.html", outputHtml);
 
-  const browser2 = await chromium.puppeteer.launch({ 
-    args: chromium.args,
-    defaultViewport: chromium.defaultViewport,
-    executablePath: await chromium.executablePath,
-    headless: chromium.headless,
+  const browser2 = await puppeteer.launch({ 
+    args: puppeteer.args,
+    defaultViewport: puppeteer.defaultViewport,
+    headless: true,
     ignoreHTTPSErrors: true
   }); // for test disable the headlels mode,
-    const page2 = await browser2.newPage();
+  const page2 = await browser2.newPage();
   await page2.setViewport({ width: 1000, height: 926 });
   await page2.goto('file:///tmp/output.html',{waitUntil: 'networkidle2'});
 
   await page2.emulateMediaType('screen');
   const pdf2 = await page2.pdf({
-    path: '/tmp/output.pdf',
+    path: './output-test.pdf',
     margin: { top: '50px', right: '20px', bottom: '50px', left: '20px' },
     printBackground: true,
     format: 'A4',
@@ -105,36 +164,38 @@ exports.handler = async (event, context) => {
 
   browser2.close();
 
-  const AWS = require('aws-sdk');
+  // const AWS = require('aws-sdk');
 
-  const s3 = new AWS.S3({
-    accessKeyId: 'AKIATXPVXTXDPVJVIZUJ',
-    secretAccessKey: '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'
-  });
+  // const s3 = new AWS.S3({
+  //   accessKeyId: 'AKIATXPVXTXDPVJVIZUJ',
+  //   secretAccessKey: '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'
+  // });
 
-  const uploadFile = (data) => {
-    console.log('Starting file upload')
+  // const uploadFile = (data) => {
+  //   console.log('Starting file upload')
 
-    const params = {
-      Bucket: 'sector-inserter', // pass your bucket name
-      Key: 'output.html', // file will be saved as testBucket/contacts.csv
-      Body: data,
-      ContentType: 'text/html'
-    };
-    s3.upload(params, function (s3Err, data) {
-      if (s3Err) throw s3Err
-      console.log(`File uploaded successfully at ${data.Location}`)
-        return {
-          'statusCode': 200,
-          'body': JSON.stringify(data.Location)
-        }
-    });
-  };
+  //   const params = {
+  //     Bucket: 'sector-inserter', // pass your bucket name
+  //     Key: 'output.html', // file will be saved as testBucket/contacts.csv
+  //     Body: data,
+  //     ContentType: 'text/html'
+  //   };
+  //   s3.upload(params, function (s3Err, data) {
+  //     if (s3Err) throw s3Err
+  //     console.log(`File uploaded successfully at ${data.Location}`)
+  //       return {
+  //         'statusCode': 200,
+  //         'body': JSON.stringify(data.Location)
+  //       }
+  //   });
+  // };
 
-  uploadFile(outputHtml);
+  // uploadFile(outputHtml);
 
   // return {
   //   'statusCode': 200,
   //   'body': response
   // }
 }
+
+main();

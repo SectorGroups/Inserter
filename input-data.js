@@ -4579,10 +4579,10 @@ const data = {
       ]
     },
     "what_type_of_relationship_do_you_wish_for_": {
-      "value": "Known",
+      "value": "Open to either",
       "versions": [
         {
-          "value": "Known",
+          "value": "Open to either",
           "source-type": "FORM",
           "source-id": "944325e4-25b0-4e1b-b9fc-eeae1b3ad69e",
           "source-label": "What type of relationship do you wish for?",

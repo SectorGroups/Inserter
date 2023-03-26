@@ -1,15 +1,15 @@
-exports.handler = async (event, context) => {
-// const main = async (event, context) => { // USED FOR LOCAL DEV
+// exports.handler = async (event, context) => {
+const main = async (event, context) => { // USED FOR LOCAL DEV
 
   console.log(event);
   console.log(context);
 
   // change to input param
-  const inputData = JSON.parse(event.body);
-  // const inputData = require('./input-data'); // USED FOR LOCAL DEV
+  // const inputData = JSON.parse(event.body);
+  const inputData = require('./input-data'); // USED FOR LOCAL DEV
 
   const fs = require("fs");
-  // const puppeteer = require('puppeteer');
+  const puppeteer = require('puppeteer');
   const chromium = require('chrome-aws-lambda');
 
   var htmlparser2 = require("htmlparser2");
@@ -19,23 +19,23 @@ exports.handler = async (event, context) => {
   // const jsPdf = require('jspdf');
 
   // v2: change to input param
-  const url = inputData.properties.hs_analytics_last_url.value;
-  // const url = 'https://share.hsforms.com/1P75vRsyNTdSKleb72s-LYA32b7e'; // USED FOR LOCAL DEV??
+  // const url = inputData.properties.hs_analytics_last_url.value;
+  const url = 'https://share.hsforms.com/1P75vRsyNTdSKleb72s-LYA32b7e'; // USED FOR LOCAL DEV??
 
-  const browser = await chromium.puppeteer.launch({
-    args: chromium.args,
-    defaultViewport: chromium.defaultViewport,
-    executablePath: await chromium.executablePath,
-    headless: chromium.headless,
-    ignoreHTTPSErrors: true
-  });
-  // USED FOR LOCAL DEV
-  // const browser = await puppeteer.launch({
-  //   args: puppeteer.args,
-  //   defaultViewport: puppeteer.defaultViewport,
-  //   headless: true,
+  // const browser = await chromium.puppeteer.launch({
+  //   args: chromium.args,
+  //   defaultViewport: chromium.defaultViewport,
+  //   executablePath: await chromium.executablePath,
+  //   headless: chromium.headless,
   //   ignoreHTTPSErrors: true
   // });
+  // USED FOR LOCAL DEV
+  const browser = await puppeteer.launch({
+    args: puppeteer.args,
+    defaultViewport: puppeteer.defaultViewport,
+    headless: true,
+    ignoreHTTPSErrors: true
+  });
   const page = await browser.newPage();
   await page.setViewport({ width: 1000, height: 926 });
   await page.goto(url,{waitUntil: 'networkidle2'});
@@ -60,18 +60,23 @@ exports.handler = async (event, context) => {
           */
           try{
             if (name === "input" && attributes.type === "text") {
+              if (attributes.inputmode === "numeric") {
+                $(`input[name=${attributes.name}]`).attr('value', parseInt(inputData.properties[attributes.name].value));
+              } else {
+                $(`input[name=${attributes.name}]`).attr('value', inputData.properties[attributes.name].value);
+              }
+            } else if (name === "input" && attributes.type === "tel") {
               $(`input[name=${attributes.name}]`).attr('value', inputData.properties[attributes.name].value);
-            }else if (name === "input" && attributes.type === "email") {
+            }
+            else if (name === "input" && attributes.type === "email") {
               $(`input[name=${attributes.name}]`).attr('value', inputData.properties[attributes.name].value);
             }else if (name === "input" && attributes.type === "radio") {
-              $(`input[name=${attributes.name}][value=${inputData.properties[attributes.name].value}]`).attr('checked', 'checked');
+              const contentToInject = String(inputData.properties[attributes.name].value).toString().trim().replace(/’/g, "'")
+              $(`input[name=${attributes.name}][value='${contentToInject}']`).attr('checked', 'checked');
+
             }else if (name === "input" && attributes.type === "file") {
               const inputBtn = `input[name=${attributes.name}]`
               console.log(inputBtn)
-              // console.log(inputBtn)
-              // inputBtn.click(function() {
-              //   alert( "Handler for .change() called." );
-              // });
               const input = $(inputBtn)
               input.parent().addClass('print-cleanup')
               input.attr('style', 'color: transparent;')
@@ -81,9 +86,10 @@ exports.handler = async (event, context) => {
               $(`<div id="${ele}_upload" style="display:flex; flex-direction:column; gap: 15px; width:fit-content;"><div id="${ele}" style="display:flex; flex-direction:column; width:fit-content;"><button id="remove-img-button" type="button" onclick="removeImage(${ele})">Remove</button><img style="width: 200px;" id="${ele}_img" src="${inputData.properties[attributes.name].value}"/></div>`).insertAfter(inputBtn);
             }else if (name === "input" && attributes.type === "checkbox") {
               var attrName = attributes.id.split('-input')[0];
-              $(`input[name*=${attrName}][value=${inputData.properties[attrName].value}]`).attr('checked','checked');
+              $(`input[name*=${attrName}][value=${String(inputData.properties[attrName].value).trim().replace(/’/g, "'")}]`).attr('checked','checked');
             }else if (name === "textarea") {
-              $(`textarea[name=${attributes.name}]`).text(inputData.properties[attributes.name].value);
+              const str = String(inputData.properties[attributes.name].value).replace(/’/g, "'");
+              $(`textarea[name=${attributes.name}]`).text(str);
             }else if (name === "select") {
               $(`select[name=${attributes.name}] option`).filter(function () { return $(this).text() == inputData.properties[attributes.name].value}).attr('selected', true);
             }
@@ -92,6 +98,7 @@ exports.handler = async (event, context) => {
           }
 
       },
+      decodeEntities: true
   });
   parser.write(
       newSource
@@ -383,4 +390,4 @@ exports.handler = async (event, context) => {
   // });
 }
 
-// main(); // USED FOR LOCAL DEV
+main(); // USED FOR LOCAL DEV

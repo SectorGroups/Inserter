@@ -1,12 +1,12 @@
-// exports.handler = async (event, context) => {
-const main = async (event, context) => { // USED FOR LOCAL DEV
+exports.handler = async (event, context) => {
+// const main = async (event, context) => { // USED FOR LOCAL DEV
 
   console.log(event);
   console.log(context);
 
   // change to input param
-  // const inputData = JSON.parse(event.body);
-  const inputData = require('./input-data'); // USED FOR LOCAL DEV
+  const inputData = JSON.parse(event.body);
+  // const inputData = require('./input-data'); // USED FOR LOCAL DEV
 
   const fs = require("fs");
   const puppeteer = require('puppeteer');
@@ -19,23 +19,23 @@ const main = async (event, context) => { // USED FOR LOCAL DEV
   // const jsPdf = require('jspdf');
 
   // v2: change to input param
-  // const url = inputData.properties.hs_analytics_last_url.value;
-  const url = 'https://share.hsforms.com/1P75vRsyNTdSKleb72s-LYA32b7e'; // USED FOR LOCAL DEV??
+  const url = inputData.properties.hs_analytics_last_url.value;
+  // const url = 'https://share.hsforms.com/1P75vRsyNTdSKleb72s-LYA32b7e'; // USED FOR LOCAL DEV??
 
-  // const browser = await chromium.puppeteer.launch({
-  //   args: chromium.args,
-  //   defaultViewport: chromium.defaultViewport,
-  //   executablePath: await chromium.executablePath,
-  //   headless: chromium.headless,
-  //   ignoreHTTPSErrors: true
-  // });
-  // USED FOR LOCAL DEV
-  const browser = await puppeteer.launch({
-    args: puppeteer.args,
-    defaultViewport: puppeteer.defaultViewport,
-    headless: true,
+  const browser = await chromium.puppeteer.launch({
+    args: chromium.args,
+    defaultViewport: chromium.defaultViewport,
+    executablePath: await chromium.executablePath,
+    headless: chromium.headless,
     ignoreHTTPSErrors: true
   });
+  // USED FOR LOCAL DEV
+  // const browser = await puppeteer.launch({
+  //   args: puppeteer.args,
+  //   defaultViewport: puppeteer.defaultViewport,
+  //   headless: true,
+  //   ignoreHTTPSErrors: true
+  // });
   const page = await browser.newPage();
   await page.setViewport({ width: 1000, height: 926 });
   await page.goto(url,{waitUntil: 'networkidle2'});
@@ -404,4 +404,4 @@ const main = async (event, context) => { // USED FOR LOCAL DEV
   // });
 }
 
-main(); // USED FOR LOCAL DEV
+// main(); // USED FOR LOCAL DEV

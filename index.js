@@ -109,6 +109,20 @@ const main = async (event, context) => { // USED FOR LOCAL DEV
     $(item).remove();
   });
 
+  $('span').each((index, item) => {
+    // $(item).val();
+    const name = $(item).text();
+    value = name.replace(/’/g, "'");
+    return $(item).text(value);
+  });
+
+  $('h5').each((index, item) => {
+    // $(item).val();
+    const name = $(item).text();
+    value = name.replace(/’/g, "'");
+    return $(item).text(value);
+  });
+
   $('button[type="submit"]').remove();
   $('<div class="sector-actions"><img width="120px" src="https://www.sectorgrowth.ca/hubfs/Heading%20(500%20%C3%97%20200%20px)%20(700%20%C3%97%20350%20px)%20(200%20%C3%97%20100%20px).svg"><button id="print-button" class="button-36" type="button" onclick="saveImage()" style="display:none;">Save Image</button><button class="button-36" id="print-button" type="button" onclick="printPDF()">Print PDF</button></div>').prependTo('main[id="main"]');
   // $('<button id="print-button" type="button" onclick="printPDF()">Print Pdf</button>').prependTo('#add_photo_container_img');

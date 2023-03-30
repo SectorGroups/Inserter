@@ -1,15 +1,18 @@
 exports.handler = async (event, context) => {
-// const main = async (event, context) => { // USED FOR LOCAL DEV
 
-  console.log(event);
-  console.log(context);
+// const main = async (event, context) => { // USED FOR LOCAL DEV
+console.log("starting now...");
+
+  // console.log(event);
+  // console.log(context);
+  const { DateTime } = require("luxon");
 
   // change to input param
   const inputData = JSON.parse(event.body);
   // const inputData = require('./input-data'); // USED FOR LOCAL DEV
 
   const fs = require("fs");
-  const puppeteer = require('puppeteer');
+  // const puppeteer = require('puppeteer'); // USED FOR LOCAL DEV
   const chromium = require('chrome-aws-lambda');
 
   var htmlparser2 = require("htmlparser2");
@@ -61,9 +64,25 @@ exports.handler = async (event, context) => {
           try{
             if (name === "input" && attributes.type === "text") {
               if (attributes.inputmode === "numeric") {
-                $(`input[name=${attributes.name}]`).attr('value', parseInt(inputData.properties[attributes.name].value));
+                // $(`input[name=${attributes.name}]`).attr('value', `'${parseInt(inputData.properties[attributes.name].value)}'`);
+                const attrName = attributes.name;
+                const newAttrName = attributes.name.split('__')[0]
+
+                const val = inputData.properties[newAttrName].value
+                const parsedDate = DateTime.fromMillis(parseInt(val));
+
+                if (attrName.includes('DD')) {
+                  $(`input[name=${attributes.name}]`).attr('value', `${parseInt(parsedDate.day)}`);
+                } else if (attrName.includes('MM')) {
+                  $(`input[name=${attributes.name}]`).attr('value', `${parseInt(parsedDate.month)}`);
+                } else if (attrName.includes('YYYY')) {
+                  $(`input[name=${attributes.name}]`).attr('value', `${parseInt(parsedDate.year)}`);
+                } else {
+                  $(`input[name=${attributes.name}]`).attr('value', `'${parseInt(inputData.properties[attributes.name].value)}'`);
+                }
               } else {
-                $(`input[name=${attributes.name}]`).attr('value', inputData.properties[attributes.name].value);
+              const str = String(inputData.properties[attributes.name].value).replace(/’/g, "'").replace(/”/g, "\"");
+                $(`input[name=${attributes.name}]`).attr('value', str);
               }
             } else if (name === "input" && attributes.type === "tel") {
               $(`input[name=${attributes.name}]`).attr('value', inputData.properties[attributes.name].value);
@@ -71,7 +90,7 @@ exports.handler = async (event, context) => {
             else if (name === "input" && attributes.type === "email") {
               $(`input[name=${attributes.name}]`).attr('value', inputData.properties[attributes.name].value);
             }else if (name === "input" && attributes.type === "radio") {
-              const contentToInject = String(inputData.properties[attributes.name].value).toString().trim().replace(/’/g, "'")
+              const contentToInject = String(inputData.properties[attributes.name].value).toString().trim().replace(/’/g, "'").replace(/”/g, "\"")
               $(`input[name=${attributes.name}][value='${contentToInject}']`).attr('checked', 'checked');
 
             }else if (name === "input" && attributes.type === "file") {
@@ -86,9 +105,9 @@ exports.handler = async (event, context) => {
               $(`<div id="${ele}_upload" style="display:flex; flex-direction:column; gap: 15px; width:fit-content;"><div id="${ele}" style="display:flex; flex-direction:column; width:fit-content;"><button id="remove-img-button" type="button" onclick="removeImage(${ele})">Remove</button><img style="width: 200px;" id="${ele}_img" src="${inputData.properties[attributes.name].value}"/></div>`).insertAfter(inputBtn);
             }else if (name === "input" && attributes.type === "checkbox") {
               var attrName = attributes.id.split('-input')[0];
-              $(`input[name*=${attrName}][value=${String(inputData.properties[attrName].value).trim().replace(/’/g, "'")}]`).attr('checked','checked');
+              $(`input[name*=${attrName}][value='${String(inputData.properties[attrName].value).trim().replace(/’/g, "'").replace(/”/g, "\"")}']`).attr('checked','checked');
             }else if (name === "textarea") {
-              const str = String(inputData.properties[attributes.name].value).replace(/’/g, "'");
+              const str = String(inputData.properties[attributes.name].value).replace(/’/g, "'").replace(/”/g, "\"");
               $(`textarea[name=${attributes.name}]`).text(str);
             }else if (name === "select") {
               $(`select[name=${attributes.name}] option`).filter(function () { return $(this).text() == inputData.properties[attributes.name].value}).attr('selected', true);
@@ -112,14 +131,14 @@ exports.handler = async (event, context) => {
   $('span').each((index, item) => {
     // $(item).val();
     const name = $(item).text();
-    value = name.replace(/’/g, "'");
+    value = name.replace(/’/g, "'").replace(/”/g, "\"");
     return $(item).text(value);
   });
 
   $('h5').each((index, item) => {
     // $(item).val();
     const name = $(item).text();
-    value = name.replace(/’/g, "'");
+    value = name.replace(/’/g, "'").replace(/”/g, "\"");
     return $(item).text(value);
   });
 

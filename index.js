@@ -1,13 +1,16 @@
 exports.handler = async (event, context) => {
 
+  const replaceSpecialChars = (issueString) => {
+    return String(issueString).replace(/’/g, "'").replace(/”/g, "\"")
+  }
+
+
+
 // const main = async (event, context) => { // USED FOR LOCAL DEV
 console.log("starting now...");
 
-  // console.log(event);
-  // console.log(context);
   const { DateTime } = require("luxon");
 
-  // change to input param
   const inputData = JSON.parse(event.body);
   // const inputData = require('./input-data'); // USED FOR LOCAL DEV
 
@@ -18,10 +21,6 @@ console.log("starting now...");
   var htmlparser2 = require("htmlparser2");
   const cheerio = require('cheerio');
 
-  // const html2canvas = require('html2canvas');
-  // const jsPdf = require('jspdf');
-
-  // v2: change to input param
   const url = inputData.properties.hs_analytics_last_url.value;
   // const url = 'https://share.hsforms.com/1P75vRsyNTdSKleb72s-LYA32b7e'; // USED FOR LOCAL DEV??
 
@@ -43,10 +42,7 @@ console.log("starting now...");
   await page.setViewport({ width: 1000, height: 926 });
   await page.goto(url,{waitUntil: 'networkidle2'});
 
-  console.log("start evaluate javascript");
-
   const html = await page.content();
-  // fs.writeFileSync("/tmp/index.html", html);
 
   browser.close();
 
@@ -55,67 +51,60 @@ console.log("starting now...");
 
   const parser = new htmlparser2.Parser({
       onopentag(name, attributes) {
-          /*
-          * This fires when a new tag is opened.
-          *
-          * If you don't need an aggregated `attributes` object,
-          * have a look at the `onopentagname` and `onattribute` events.
-          */
+        const targetAttributeName = attributes.name
           try{
             if (name === "input" && attributes.type === "text") {
               if (attributes.inputmode === "numeric") {
                 // $(`input[name=${attributes.name}]`).attr('value', `'${parseInt(inputData.properties[attributes.name].value)}'`);
-                const attrName = attributes.name;
-                const newAttrName = attributes.name.split('__')[0]
-
+                const newAttrName = targetAttributeName.split('__')[0]
                 const val = inputData.properties[newAttrName].value
                 const parsedDate = DateTime.fromMillis(parseInt(val));
 
-                if (attrName.includes('DD')) {
-                  $(`input[name=${attributes.name}]`).attr('value', `${parseInt(parsedDate.day)}`);
-                } else if (attrName.includes('MM')) {
-                  $(`input[name=${attributes.name}]`).attr('value', `${parseInt(parsedDate.month)}`);
-                } else if (attrName.includes('YYYY')) {
-                  $(`input[name=${attributes.name}]`).attr('value', `${parseInt(parsedDate.year)}`);
+                // parse out date fields if input is separated
+                if (targetAttributeName.includes('DD')) {
+                  $(`input[name=${targetAttributeName}]`).attr('value', `${parseInt(parsedDate.day)}`);
+                } else if (targetAttributeName.includes('MM')) {
+                  $(`input[name=${targetAttributeName}]`).attr('value', `${parseInt(parsedDate.month)}`);
+                } else if (targetAttributeName.includes('YYYY')) {
+                  $(`input[name=${targetAttributeName}]`).attr('value', `${parseInt(parsedDate.year)}`);
                 } else {
-                  $(`input[name=${attributes.name}]`).attr('value', `'${parseInt(inputData.properties[attributes.name].value)}'`);
+                  $(`input[name=${targetAttributeName}]`).attr('value', `'${parseInt(inputData.properties[targetAttributeName].value)}'`);
                 }
               } else {
-              const str = String(inputData.properties[attributes.name].value).replace(/’/g, "'").replace(/”/g, "\"");
-                $(`input[name=${attributes.name}]`).attr('value', str);
+                const str = replaceSpecialChars(inputData.properties[targetAttributeName].value)
+                $(`input[name=${targetAttributeName}]`).attr('value', str);
               }
             } else if (name === "input" && attributes.type === "tel") {
-              $(`input[name=${attributes.name}]`).attr('value', inputData.properties[attributes.name].value);
+              $(`input[name=${targetAttributeName}]`).attr('value', inputData.properties[targetAttributeName].value);
             }
             else if (name === "input" && attributes.type === "email") {
-              $(`input[name=${attributes.name}]`).attr('value', inputData.properties[attributes.name].value);
+              $(`input[name=${targetAttributeName}]`).attr('value', inputData.properties[targetAttributeName].value);
             }else if (name === "input" && attributes.type === "radio") {
-              const contentToInject = String(inputData.properties[attributes.name].value).toString().trim().replace(/’/g, "'").replace(/”/g, "\"")
-              $(`input[name=${attributes.name}][value='${contentToInject}']`).attr('checked', 'checked');
+              const contentToInject = replaceSpecialChars(inputData.properties[targetAttributeName].value)
+              $(`input[name=${targetAttributeName}][value='${contentToInject}']`).attr('checked', 'checked');
 
             }else if (name === "input" && attributes.type === "file") {
-              const inputBtn = `input[name=${attributes.name}]`
+              const inputBtn = `input[name=${targetAttributeName}]`
               console.log(inputBtn)
               const input = $(inputBtn)
               input.parent().addClass('print-cleanup')
               input.attr('style', 'color: transparent;')
               input.attr('onchange', 'onChangeInput(event)')
 
-              const ele = `${attributes.name}_container`
-              $(`<div id="${ele}_upload" style="display:flex; flex-direction:column; gap: 15px; width:fit-content;"><div id="${ele}" style="display:flex; flex-direction:column; width:fit-content;"><button id="remove-img-button" type="button" onclick="removeImage(${ele})">Remove</button><img style="width: 200px;" id="${ele}_img" src="${inputData.properties[attributes.name].value}"/></div>`).insertAfter(inputBtn);
+              const ele = `${targetAttributeName}_container`
+              $(`<div id="${ele}_upload" style="display:flex; flex-direction:column; gap: 15px; width:fit-content;"><div id="${ele}" style="display:flex; flex-direction:column; width:fit-content;"><button id="remove-img-button" type="button" onclick="removeImage(${ele})">Remove</button><img style="width: 200px;" id="${ele}_img" src="${inputData.properties[targetAttributeName].value}"/></div>`).insertAfter(inputBtn);
             }else if (name === "input" && attributes.type === "checkbox") {
               var attrName = attributes.id.split('-input')[0];
-              $(`input[name*=${attrName}][value='${String(inputData.properties[attrName].value).trim().replace(/’/g, "'").replace(/”/g, "\"")}']`).attr('checked','checked');
+              $(`input[name*=${attrName}][value='${replaceSpecialChars(inputData.properties[attrName].value)}']`).attr('checked','checked');
             }else if (name === "textarea") {
-              const str = String(inputData.properties[attributes.name].value).replace(/’/g, "'").replace(/”/g, "\"");
-              $(`textarea[name=${attributes.name}]`).text(str);
+              const str = replaceSpecialChars(inputData.properties[targetAttributeName].value)
+              $(`textarea[name=${targetAttributeName}]`).text(str);
             }else if (name === "select") {
-              $(`select[name=${attributes.name}] option`).filter(function () { return $(this).text() == inputData.properties[attributes.name].value}).attr('selected', true);
+              $(`select[name=${targetAttributeName}] option`).filter(function () { return $(this).text() == inputData.properties[targetAttributeName].value}).attr('selected', true);
             }
           }catch (e) {
-            // console.log(e);
+            console.log(e);
           }
-
       },
       decodeEntities: true
   });
@@ -129,37 +118,23 @@ console.log("starting now...");
   });
 
   $('span').each((index, item) => {
-    // $(item).val();
     const name = $(item).text();
-    value = name.replace(/’/g, "'").replace(/”/g, "\"");
+    value = replaceSpecialChars(name)
     return $(item).text(value);
   });
 
   $('h5').each((index, item) => {
-    // $(item).val();
     const name = $(item).text();
-    value = name.replace(/’/g, "'").replace(/”/g, "\"");
+    value = replaceSpecialChars(name)
     return $(item).text(value);
   });
 
   $('button[type="submit"]').remove();
   $('<div class="sector-actions"><img width="120px" src="https://www.sectorgrowth.ca/hubfs/Heading%20(500%20%C3%97%20200%20px)%20(700%20%C3%97%20350%20px)%20(200%20%C3%97%20100%20px).svg"><button id="print-button" class="button-36" type="button" onclick="saveImage()" style="display:none;">Save Image</button><button class="button-36" id="print-button" type="button" onclick="printPDF()">Print PDF</button></div>').prependTo('main[id="main"]');
-  // $('<button id="print-button" type="button" onclick="printPDF()">Print Pdf</button>').prependTo('#add_photo_container_img');
-  // console.log($('input[id="add_photo-input"]').html().)
-  // $('input[id="add_photo-input"]').attr('onchange', 'onChangeInput(event)')
   $('input[id="add_photo-input"]').attr('id')
   $('input[id="add_photo-input"]').attr('sectorName', 'add_photo-input')
   $('div[id=form-target]').attr('style', 'margin: 50px')
-
-  // $('input[id="add_photo-input"]').html()
-
-
-  // $('<button id="remove-img-button" type="button" onclick="removeImage()">Remove</button>').prependTo('.hs-form__field__input');
-
-  // $('style').text +=
-  //   "@media screen and (min-width:400px) { div { color: red; }}"
   $('head').append(`<style type="text/css">
-
   .sector-actions {
     display: flex;
     flex-direction: row;
@@ -240,24 +215,7 @@ console.log("starting now...");
       display: none;
     }
   }
-
   </style>`);
-
-  // $('head').append('<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>');
-  // $('head').append('<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/1.3.2/jspdf.debug.js"></script>');
-
-  // // Create the element
-  // var script = document.createElement("script");
-  // // Add script content
-  // script.async = true;
-  // script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js'
-
-  // script.onload = () => {
-  //   alert('Script loaded successfuly');
-  // };
-  // // Append
-  // $("head").prepend(script);
-
   $(`
   <script type="text/javascript">
   function debugBase64(base64URL){
@@ -340,7 +298,7 @@ console.log("starting now...");
   console.log(outputFilename)
 
   const outputHtml = $.html();
-  // console.log(outputHtml)
+
   // fs.writeFileSync('file:///tmp/' + outputFilename + '.html', outputHtml);
   // fs.writeFileSync(outputFilename + '.html', outputHtml); // USED FOR LOCAL DEV
 
@@ -372,8 +330,6 @@ console.log("starting now...");
   //   format: 'A4',
   // });
   // await page2.screenshot({ path: './' + outputFilename + '.png', fullPage: true });
-
-
   // browser2.close();
 
   const AWS = require('aws-sdk');

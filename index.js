@@ -95,7 +95,7 @@ console.log("starting now...");
               $(`<div id="${ele}_upload" style="display:flex; flex-direction:column; gap: 15px; width:fit-content;"><div id="${ele}" style="display:flex; flex-direction:column; width:fit-content;"><button id="remove-img-button" type="button" onclick="removeImage(${ele})">Remove</button><img style="width: 200px;" id="${ele}_img" src="${inputData.properties[targetAttributeName].value}"/></div>`).insertAfter(inputBtn);
             }else if (name === "input" && attributes.type === "checkbox") {
               var attrName = attributes.id.split('-input')[0];
-              $(`input[name*=${attrName}][value='${replaceSpecialChars(inputData.properties[attrName].value)}']`).attr('checked','checked');
+              $(`input[name=${attrName}][value='${replaceSpecialChars(inputData.properties[attrName].value)}']`).attr('checked','checked');
             }else if (name === "textarea") {
               const str = replaceSpecialChars(inputData.properties[targetAttributeName].value)
               $(`textarea[name=${targetAttributeName}]`).text(str);

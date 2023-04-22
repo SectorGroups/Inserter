@@ -1,17 +1,16 @@
 exports.handler = async (event, context) => {
 
-  const replaceSpecialChars = (issueString) => {
-    return String(issueString).replace(/’/g, "'").replace(/”/g, "\"")
-  }
-
-
-
 // const main = async (event, context) => { // USED FOR LOCAL DEV
-console.log("starting now...");
+  console.log("starting now...");
+
+  const replaceSpecialChars = (issueString) => {
+    return String(issueString).replace(/’/g, "'").replace(/”/g, "\"");
+  }
 
   const { DateTime } = require("luxon");
 
   const inputData = JSON.parse(event.body);
+  // console.log(inputData);
   // const inputData = require('./input-data'); // USED FOR LOCAL DEV
 
   const fs = require("fs");
@@ -21,7 +20,7 @@ console.log("starting now...");
   var htmlparser2 = require("htmlparser2");
   const cheerio = require('cheerio');
 
-  const url = inputData.properties.hs_analytics_last_url.value;
+  const url = inputData['form-submissions'][0]['page-url'];
   // const url = 'https://share.hsforms.com/1P75vRsyNTdSKleb72s-LYA32b7e'; // USED FOR LOCAL DEV??
 
   const browser = await chromium.puppeteer.launch({
@@ -38,11 +37,67 @@ console.log("starting now...");
   //   headless: true,
   //   ignoreHTTPSErrors: true
   // });
+
   const page = await browser.newPage();
   await page.setViewport({ width: 1000, height: 926 });
   await page.goto(url,{waitUntil: 'networkidle2'});
 
-  const html = await page.content();
+  let html = await page.content();
+
+  // iterate through radio butttons and click yes/no 
+  await page.waitForSelector('input[type=radio]');
+
+  const elementSelector = 'input[type=radio]';
+  const clickIds = await page.$$eval(elementSelector, (uiElement) => {
+    return uiElement.map(option => option.id);
+  });
+  const elementSelector3 = '.hs-form__field-row';
+    const clickIds3 = await page.$$eval(elementSelector3, (uiElement) => {
+      return uiElement.map(option => option.id);
+    });
+  var numRows = clickIds3.length;
+
+  console.log("logging");
+
+  const positiveClickIds = [];
+
+  for (let index = 0; index < clickIds.length; index++) {
+    const element = clickIds[index];
+
+    const select = '#' + element;
+    await page.evaluate((select) => document.querySelector(select).click(), select); 
+ 
+    const elementSelector2 = '.hs-form__field-row';
+    const clickIds2 = await page.$$eval(elementSelector2, (uiElement) => {
+      return uiElement.map(option => option.id);
+    });
+    
+    if(numRows < clickIds2.length){
+      positiveClickIds.push(element);
+      numRows = clickIds2.length;
+    }else if(numRows > clickIds2.length){
+      numRows = clickIds2.length;
+    }
+  }
+
+  console.log(positiveClickIds);
+
+  const pageNew = await browser.newPage();
+  await pageNew.setViewport({ width: 1000, height: 926 });
+  await pageNew.goto(url,{waitUntil: 'networkidle2'});
+
+  // iterate through radio butttons and click yes/no 
+  await pageNew.waitForSelector('input[type=radio]');
+
+  for (let index = 0; index < positiveClickIds.length; index++) {
+    const element = positiveClickIds[index];
+
+    const select = '#' + element;
+    await pageNew.evaluate((select) => document.querySelector(select).click(), select); 
+    
+  }
+
+  html = await pageNew.content();
 
   browser.close();
 
@@ -85,17 +140,27 @@ console.log("starting now...");
 
             }else if (name === "input" && attributes.type === "file") {
               const inputBtn = `input[name=${targetAttributeName}]`
-              console.log(inputBtn)
-              const input = $(inputBtn)
-              input.parent().addClass('print-cleanup')
-              input.attr('style', 'color: transparent;')
-              input.attr('onchange', 'onChangeInput(event)')
+              // console.log(inputBtn); 
+              const input = $(inputBtn);
+              input.parent().addClass('print-cleanup');
+              input.attr('style', 'color: transparent;');
+              input.attr('onchange', 'onChangeInput(event)');
 
-              const ele = `${targetAttributeName}_container`
+              const ele = `${targetAttributeName}_container`;
               $(`<div id="${ele}_upload" style="display:flex; flex-direction:column; gap: 15px; width:fit-content;"><div id="${ele}" style="display:flex; flex-direction:column; width:fit-content;"><button id="remove-img-button" type="button" onclick="removeImage(${ele})">Remove</button><img style="width: 200px;" id="${ele}_img" src="${inputData.properties[targetAttributeName].value}"/></div>`).insertAfter(inputBtn);
             }else if (name === "input" && attributes.type === "checkbox") {
-              var attrName = attributes.id.split('-input')[0];
-              $(`input[name=${attrName}][value='${replaceSpecialChars(inputData.properties[attrName].value)}']`).attr('checked','checked');
+              if(attributes.name.indexOf("-") === -1){
+                if(inputData.properties[attributes.name].value.includes("Yes")){
+                  $(`input[name='${attrName}']`).attr('checked','checked');
+                }
+              }else{
+                var attrNameVal = attributes.name.split('-')[1];
+                var attrNameName = attributes.name.split('-')[0];
+                var attrName = attributes.name;
+                if(inputData.properties[attrNameName].value.includes(attrNameVal)){
+                  $(`input[name='${attrName}']`).attr('checked','checked');
+                }
+              }
             }else if (name === "textarea") {
               const str = replaceSpecialChars(inputData.properties[targetAttributeName].value)
               $(`textarea[name=${targetAttributeName}]`).text(str);
@@ -157,6 +222,10 @@ console.log("starting now...");
 
   .button-mod {
     background-image: linear-gradient(92.88deg, #032d2d 9.16%, #265497 43.89%, #0066ec 64.72%) !important;
+  }
+
+  select.is-placeholder {
+    color: black;
   }
 
   .button-36 {
@@ -301,7 +370,6 @@ console.log("starting now...");
 
   // fs.writeFileSync('file:///tmp/' + outputFilename + '.html', outputHtml);
   // fs.writeFileSync(outputFilename + '.html', outputHtml); // USED FOR LOCAL DEV
-
 
   // const browser2 = await chromium.puppeteer.launch({
   //   args: chromium.args,

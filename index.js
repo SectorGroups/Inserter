@@ -9,11 +9,11 @@ exports.handler = async (event, context) => {
 
   const { DateTime } = require("luxon");
 
-  const inputData = JSON.parse(event.body);
+  const inputData = JSON.parse(event.body.toString('utf-8'));
   // console.log(inputData);
   // const inputData = require('./input-data'); // USED FOR LOCAL DEV
 
-  const fs = require("fs");
+  // const fs = require("fs");
   // const puppeteer = require('puppeteer'); // USED FOR LOCAL DEV
   const chromium = require('chrome-aws-lambda');
 
@@ -199,6 +199,7 @@ exports.handler = async (event, context) => {
   $('input[id="add_photo-input"]').attr('id')
   $('input[id="add_photo-input"]').attr('sectorName', 'add_photo-input')
   $('div[id=form-target]').attr('style', 'margin: 50px')
+  $('head').append(`<meta charset="utf-8" />`);
   $('head').append(`<style type="text/css">
   .sector-actions {
     display: flex;
